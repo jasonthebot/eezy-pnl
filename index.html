@@ -99,20 +99,6 @@
       cursor: pointer;
     }
 
-    .segmented {
-      display: inline-flex;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .segmented button {
-      border: 0;
-      padding: 8px 12px;
-      background: transparent;
-      color: var(--text);
-      cursor: pointer;
-    }
-    .segmented button.active { background: var(--accent); color: #fff; }
 
     .grid { display: grid; gap: 16px; grid-template-columns: 1.2fr 1fr; }
     .card {
@@ -196,10 +182,6 @@
         <span>loading...</span>
       </div>
       <button class="btn" id="refreshPrice" title="Refresh price" aria-label="Refresh price">⟳</button>
-      <div class="segmented" id="bookSwitch" title="Switch calendar">
-        <button data-book="trading" class="active">Trading</button>
-        <button data-book="dev">Dev/Launch</button>
-      </div>
     </div>
 
     <div class="grid">
@@ -235,12 +217,8 @@
   </div>
 
 <script>
+  const STORE_KEY = 'eezy-pnl-v3';
   const THEME_KEY = 'eezy-pnl-theme';
-  const ACTIVE_BOOK_KEY = 'eezy-pnl-active-book';
-  const BOOK_KEYS = {
-    trading: 'eezy-pnl-book-trading-v1',
-    dev: 'eezy-pnl-book-dev-v1'
-  };
   const INPUTS = ['twStartSol','twEndSol','faStartSol','faEndSol'];
   const JACKPOT_USD = 5000;
   let liveSolPrice = 0;
@@ -248,30 +226,19 @@
   const state = {
     currentMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     selectedDate: isoDate(new Date()),
-    activeBook: localStorage.getItem(ACTIVE_BOOK_KEY) || 'trading',
-    data: {}
+    data: loadData()
   };
 
   const el = (id) => document.getElementById(id);
   const n = (v) => Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
 
-  function loadBook(book){
-    try { return JSON.parse(localStorage.getItem(BOOK_KEYS[book]) || '{}'); }
+  function loadData(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
     catch { return {}; }
   }
 
   function saveData(){
-    localStorage.setItem(BOOK_KEYS[state.activeBook], JSON.stringify(state.data));
-  }
-
-  function setActiveBook(book){
-    state.activeBook = book;
-    localStorage.setItem(ACTIVE_BOOK_KEY, book);
-    state.data = loadBook(book);
-    document.querySelectorAll('#bookSwitch button').forEach(b => b.classList.toggle('active', b.dataset.book === book));
-    fillForm();
-    renderCalendar();
-    renderStats();
+    localStorage.setItem(STORE_KEY, JSON.stringify(state.data));
   }
 
   function isoDate(d){
@@ -327,6 +294,11 @@
     return 'flat';
   }
 
+  function effectiveRow(key){
+    if (key !== state.selectedDate) return state.data[key];
+    return { ...(state.data[key] || {}), ...readForm() };
+  }
+
   async function fetchLivePrice(){
     try {
       const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd', { cache: 'no-store' });
@@ -334,12 +306,25 @@
       const p = Number(j?.solana?.usd || 0);
       if (p > 0) {
         liveSolPrice = p;
+        localStorage.setItem('eezy-last-sol-price', String(p));
         el('livePrice').querySelector('span').textContent = `Solana: $${p.toFixed(2)} (live)`;
+      } else {
+        const cached = Number(localStorage.getItem('eezy-last-sol-price') || 0);
+      if (cached > 0) {
+        liveSolPrice = cached;
+        el('livePrice').querySelector('span').textContent = `Solana: $${cached.toFixed(2)} (cached)`;
       } else {
         el('livePrice').querySelector('span').textContent = 'Solana: unavailable';
       }
+      }
     } catch {
-      el('livePrice').querySelector('span').textContent = 'Solana: unavailable';
+      const cached = Number(localStorage.getItem('eezy-last-sol-price') || 0);
+      if (cached > 0) {
+        liveSolPrice = cached;
+        el('livePrice').querySelector('span').textContent = `Solana: $${cached.toFixed(2)} (cached)`;
+      } else {
+        el('livePrice').querySelector('span').textContent = 'Solana: unavailable';
+      }
     }
     renderCalendar();
     renderStats();
@@ -371,7 +356,7 @@
     for(let day = 1; day <= daysInMonth; day++){
       const d = new Date(y,m,day);
       const key = isoDate(d);
-      const sol = daySol(state.data[key]);
+      const sol = daySol(effectiveRow(key));
       const usd = sol * liveSolPrice;
 
       const cell = document.createElement('button');
@@ -415,11 +400,19 @@
   function renderStats(){
     const week = getWeekRange(state.selectedDate);
     const month = getMonthRange(state.selectedDate);
-    const weekUsd = sumRangeSol(week.start, week.end) * liveSolPrice;
-    const monthUsd = sumRangeSol(month.start, month.end) * liveSolPrice;
+    const effectiveData = { ...state.data, [state.selectedDate]: effectiveRow(state.selectedDate) };
+
+    const sumRangeSolFrom = (start,end) => {
+      let total = 0;
+      for (const [k,v] of Object.entries(effectiveData)) if (k>=start && k<=end) total += daySol(v);
+      return total;
+    };
+
+    const weekUsd = sumRangeSolFrom(week.start, week.end) * liveSolPrice;
+    const monthUsd = sumRangeSolFrom(month.start, month.end) * liveSolPrice;
 
     let allUsd = 0;
-    for (const v of Object.values(state.data)) allUsd += daySol(v) * liveSolPrice;
+    for (const v of Object.values(effectiveData)) allUsd += daySol(v) * liveSolPrice;
 
     paintValue('weekUsd', fmtUsd(weekUsd), weekUsd);
     paintValue('monthUsd', fmtUsd(monthUsd), monthUsd);
@@ -465,11 +458,13 @@
 
   applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 
-  document.querySelectorAll('#bookSwitch button').forEach(btn => {
-    btn.onclick = () => setActiveBook(btn.dataset.book);
+  INPUTS.forEach(id => {
+    el(id).addEventListener('input', () => {
+      renderCalendar();
+      renderStats();
+    });
   });
 
-  setActiveBook(state.activeBook);
   fillForm();
   renderCalendar();
   renderStats();
