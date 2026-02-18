@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eezy PNL</title>
+  <style>
+    :root {
+      --bg: #0d0715;
+      --bg-grad: #1a0f2b;
+      --panel: #1a0f2b;
+      --panel-2: #24143b;
+      --text: #ece7ff;
+      --muted: #b7a8e3;
+      --accent: #8b5cf6;
+      --profit: #22c55e;
+      --loss: #ef4444;
+      --border: #3a2461;
+      --day-bg: rgba(16,9,29,.55);
+      --good-cell: #0f5f40;
+      --bad-cell: #7d1f1f;
+      --jackpot-cell: #8a6a1d;
+      --flat-cell: #2f2350;
+    }
+
+    body.light {
+      --bg: #f6f2ff;
+      --bg-grad: #ece2ff;
+      --panel: #ffffff;
+      --panel-2: #f5eeff;
+      --text: #1e1238;
+      --muted: #61458f;
+      --accent: #7c3aed;
+      --profit: #15803d;
+      --loss: #b91c1c;
+      --border: #d8c6ff;
+      --day-bg: rgba(237,230,255,.8);
+      --good-cell: #22c55e;
+      --bad-cell: #ef4444;
+      --jackpot-cell: #d4a21f;
+      --flat-cell: #c4b5fd;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at top, var(--bg-grad) 0%, var(--bg) 48%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      z-index: 9;
+      font-size: 1.1rem;
+    }
+
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 28px 16px 48px; }
+
+    .hero { text-align: center; margin: 8px 0 18px; }
+    h1 {
+      margin: 0;
+      font-size: clamp(2.1rem, 4vw, 3.2rem);
+      letter-spacing: .3px;
+      font-weight: 800;
+    }
+    .tagline {
+      margin-top: 6px;
+      color: var(--muted);
+      font-style: italic;
+      font-size: clamp(1rem, 1.7vw, 1.25rem);
+    }
+
+    .topline { display: flex; justify-content: center; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: .85rem;
+      background: var(--panel);
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+
+    .grid { display: grid; gap: 16px; grid-template-columns: 1.2fr 1fr; }
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.18);
+    }
+
+    .calendar-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .calendar { display:grid; grid-template-columns: repeat(7,1fr); gap:4px; }
+    .dow { text-align:center; color:var(--muted); font-size:.78rem; padding:4px 0 6px; }
+
+    .day {
+      border: 1px solid #00000033;
+      border-radius: 6px;
+      min-height: 90px;
+      padding: 8px;
+      background: var(--day-bg);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: #fff;
+      text-align: left;
+      transition: transform .08s ease;
+    }
+    .day:hover { transform: translateY(-1px); }
+    .day.other { opacity:.35; }
+    .day.active { outline: 2px solid var(--accent); }
+    .day.good { background: linear-gradient(180deg, color-mix(in oklab, var(--good-cell), #000 20%), var(--good-cell)); }
+    .day.bad { background: linear-gradient(180deg, color-mix(in oklab, var(--bad-cell), #000 12%), var(--bad-cell)); }
+    .day.jackpot { background: linear-gradient(180deg, color-mix(in oklab, var(--jackpot-cell), #000 12%), var(--jackpot-cell)); }
+    .day.flat { background: var(--flat-cell); }
+
+    .daynum { font-size:.78rem; font-weight:600; opacity: .9; }
+    .line { font-size:.88rem; font-weight:700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .line.small { font-size:.76rem; opacity:.95; font-weight:600; display:flex; align-items:center; gap:5px; }
+    .sol-mini { width:12px; height:12px; border-radius:50%; }
+
+    .section-title { margin:10px 0 6px; color:var(--muted); font-size:.94rem; }
+    .form-grid { display:grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap:10px; }
+    label { display:flex; flex-direction:column; gap:6px; font-size:1rem; color:var(--text); font-weight:600; }
+    input {
+      width:100%; border:1px solid var(--border); background: var(--bg); color:var(--text);
+      border-radius:10px; padding:8px 10px; outline:none;
+    }
+    input:focus { border-color: var(--accent); }
+
+    .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; justify-content:center; }
+    .stats { display:grid; gap:8px; grid-template-columns: repeat(3,minmax(0,1fr)); margin-top:12px; }
+    .stat { border:1px solid var(--border); background: color-mix(in oklab, var(--panel), transparent 30%); border-radius:12px; padding:10px; }
+    .stat .k { color:var(--muted); font-size:.78rem; }
+    .stat .v { font-size:1rem; font-weight:700; margin-top:4px; }
+    .profit { color: var(--profit); }
+    .loss { color: var(--loss); }
+
+    .sol-badge { display:inline-flex; align-items:center; gap:6px; }
+    .sol-badge img { width:16px; height:16px; border-radius:50%; }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns:1fr; }
+      .stats { grid-template-columns:1fr; }
+      .day { min-height: 84px; }
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+
+  <div class="wrap">
+    <div class="hero">
+      <h1>Eezy PNL</h1>
+      <div class="tagline">big money never comes clean</div>
+    </div>
+
+    <div class="topline">
+      <div class="pill sol-badge" id="livePrice">
+        <img src="https://cryptologos.cc/logos/solana-sol-logo.png?v=026" alt="Solana" />
+        <span>loading...</span>
+      </div>
+      <button class="btn" id="refreshPrice" title="Refresh price" aria-label="Refresh price">⟳</button>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <div class="calendar-head">
+          <button id="prev" class="btn">◀</button>
+          <strong id="monthLabel"></strong>
+          <button id="next" class="btn">▶</button>
+        </div>
+        <div class="calendar" id="calendar"></div>
+      </section>
+
+      <section class="card">
+        <div class="form-grid">
+          <label>Start balance <span class="sol-badge"><img src="https://cryptologos.cc/logos/solana-sol-logo.png?v=026" alt="Sol" />Solana</span><input id="twStartSol" type="number" step="any" /></label>
+          <label>End balance <span class="sol-badge"><img src="https://cryptologos.cc/logos/solana-sol-logo.png?v=026" alt="Sol" />Solana</span><input id="twEndSol" type="number" step="any" /></label>
+          <label>Start fees <span class="sol-badge"><img src="https://cryptologos.cc/logos/solana-sol-logo.png?v=026" alt="Sol" />Solana</span><input id="faStartSol" type="number" step="any" /></label>
+          <label>End fees <span class="sol-badge"><img src="https://cryptologos.cc/logos/solana-sol-logo.png?v=026" alt="Sol" />Solana</span><input id="faEndSol" type="number" step="any" /></label>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="saveBtn">Save Day</button>
+          <button class="btn" id="clearBtn">Clear Day</button>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="k">This Week (USD)</div><div id="weekUsd" class="v">$0.00</div></div>
+          <div class="stat"><div class="k">This Month (USD)</div><div id="monthUsd" class="v">$0.00</div></div>
+          <div class="stat"><div class="k">All Time (USD)</div><div id="allUsd" class="v">$0.00</div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+  const STORE_KEY = 'eezy-pnl-v3';
+  const THEME_KEY = 'eezy-pnl-theme';
+  const INPUTS = ['twStartSol','twEndSol','faStartSol','faEndSol'];
+  const JACKPOT_USD = 5000;
+  let liveSolPrice = 0;
+
+  const state = {
+    currentMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    selectedDate: isoDate(new Date()),
+    data: loadData()
+  };
+
+  const el = (id) => document.getElementById(id);
+  const n = (v) => Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0;
+
+  function loadData(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
+    catch { return {}; }
+  }
+
+  function saveData(){
+    localStorage.setItem(STORE_KEY, JSON.stringify(state.data));
+  }
+
+  function isoDate(d){
+    const dt = new Date(d);
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  }
+  function fromIso(s){ return new Date(s + 'T00:00:00'); }
+
+  function fmtUsd(v){ const s = v > 0 ? '+' : ''; return `${s}$${v.toFixed(2)}`; }
+  function fmtSol(v){ const s = v > 0 ? '+' : ''; return `${s}${v.toFixed(4)}`; }
+  function fmtCompactUsd(v){
+    const abs = Math.abs(v);
+    const sign = v > 0 ? '+' : v < 0 ? '-' : '';
+    if (abs >= 1000) return `${sign}$${(abs/1000).toFixed(2)}K`;
+    return `${sign}$${abs.toFixed(0)}`;
+  }
+  function classFor(v){ if(v>0) return 'profit'; if(v<0) return 'loss'; return ''; }
+
+  function daySol(item){
+    if(!item) return 0;
+    return (n(item.twEndSol)-n(item.twStartSol)) + (n(item.faEndSol)-n(item.faStartSol));
+  }
+
+  function mondayOf(dateStr){
+    const d = fromIso(dateStr);
+    const day = (d.getDay()+6)%7;
+    d.setDate(d.getDate()-day);
+    return isoDate(d);
+  }
+
+  function getWeekRange(dateStr){
+    const start = mondayOf(dateStr);
+    const endD = fromIso(start); endD.setDate(endD.getDate()+6);
+    return { start, end: isoDate(endD) };
+  }
+
+  function getMonthRange(dateStr){
+    const d = fromIso(dateStr);
+    const y = d.getFullYear(), m = d.getMonth();
+    return { start: isoDate(new Date(y,m,1)), end: isoDate(new Date(y,m+1,0)) };
+  }
+
+  function sumRangeSol(start,end){
+    let total = 0;
+    for (const [k,v] of Object.entries(state.data)) if (k>=start && k<=end) total += daySol(v);
+    return total;
+  }
+
+  function cellClass(pnlUsd){
+    if (pnlUsd >= JACKPOT_USD) return 'jackpot';
+    if (pnlUsd > 0) return 'good';
+    if (pnlUsd < 0) return 'bad';
+    return 'flat';
+  }
+
+  function effectiveRow(key){
+    if (key !== state.selectedDate) return state.data[key];
+    return { ...(state.data[key] || {}), ...readForm() };
+  }
+
+  async function fetchLivePrice(){
+    try {
+      const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd', { cache: 'no-store' });
+      const j = await r.json();
+      const p = Number(j?.solana?.usd || 0);
+      if (p > 0) {
+        liveSolPrice = p;
+        localStorage.setItem('eezy-last-sol-price', String(p));
+        el('livePrice').querySelector('span').textContent = `Solana: $${p.toFixed(2)} (live)`;
+      } else {
+        const cached = Number(localStorage.getItem('eezy-last-sol-price') || 0);
+      if (cached > 0) {
+        liveSolPrice = cached;
+        el('livePrice').querySelector('span').textContent = `Solana: $${cached.toFixed(2)} (cached)`;
+      } else {
+        el('livePrice').querySelector('span').textContent = 'Solana: unavailable';
+      }
+      }
+    } catch {
+      const cached = Number(localStorage.getItem('eezy-last-sol-price') || 0);
+      if (cached > 0) {
+        liveSolPrice = cached;
+        el('livePrice').querySelector('span').textContent = `Solana: $${cached.toFixed(2)} (cached)`;
+      } else {
+        el('livePrice').querySelector('span').textContent = 'Solana: unavailable';
+      }
+    }
+    renderCalendar();
+    renderStats();
+  }
+
+  function renderCalendar(){
+    const cal = el('calendar');
+    cal.innerHTML = '';
+
+    ['M','T','W','T','F','S','S'].forEach(d => {
+      const h = document.createElement('div'); h.className='dow'; h.textContent=d; cal.appendChild(h);
+    });
+
+    const m = state.currentMonth.getMonth();
+    const y = state.currentMonth.getFullYear();
+    const first = new Date(y,m,1);
+    const startOffset = (first.getDay()+6)%7;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+    el('monthLabel').textContent = first.toLocaleString(undefined,{month:'short', year:'numeric'});
+
+    for (let i = 0; i < startOffset; i++) {
+      const blank = document.createElement('div');
+      blank.className = 'day other';
+      blank.style.visibility = 'hidden';
+      cal.appendChild(blank);
+    }
+
+    for(let day = 1; day <= daysInMonth; day++){
+      const d = new Date(y,m,day);
+      const key = isoDate(d);
+      const sol = daySol(effectiveRow(key));
+      const usd = sol * liveSolPrice;
+
+      const cell = document.createElement('button');
+      cell.className = `day ${cellClass(usd)}`;
+      if(key===state.selectedDate) cell.classList.add('active');
+
+      cell.innerHTML = `
+        <div class="daynum">${day}</div>
+        <div class="line">${fmtCompactUsd(usd)}</div>
+        <div class="line small"><img class="sol-mini" src="https://cryptologos.cc/logos/solana-sol-logo.png?v=026" alt="Solana" />${fmtSol(sol)}</div>
+      `;
+
+      cell.onclick = () => {
+        state.selectedDate = key;
+        fillForm();
+        renderCalendar();
+        renderStats();
+      };
+      cal.appendChild(cell);
+    }
+  }
+
+  function fillForm(){
+    const row = state.data[state.selectedDate] || {};
+    INPUTS.forEach(id => el(id).value = row[id] ?? '');
+    // selected date label removed by design
+  }
+
+  function readForm(){
+    const out = {};
+    INPUTS.forEach(id => { const v = el(id).value.trim(); if(v!=='') out[id]=v; });
+    return out;
+  }
+
+  function paintValue(id,text,val){
+    const node = el(id); node.textContent = text;
+    node.classList.remove('profit','loss');
+    const c = classFor(val); if(c) node.classList.add(c);
+  }
+
+  function renderStats(){
+    const week = getWeekRange(state.selectedDate);
+    const month = getMonthRange(state.selectedDate);
+    const effectiveData = { ...state.data, [state.selectedDate]: effectiveRow(state.selectedDate) };
+
+    const sumRangeSolFrom = (start,end) => {
+      let total = 0;
+      for (const [k,v] of Object.entries(effectiveData)) if (k>=start && k<=end) total += daySol(v);
+      return total;
+    };
+
+    const weekUsd = sumRangeSolFrom(week.start, week.end) * liveSolPrice;
+    const monthUsd = sumRangeSolFrom(month.start, month.end) * liveSolPrice;
+
+    let allUsd = 0;
+    for (const v of Object.values(effectiveData)) allUsd += daySol(v) * liveSolPrice;
+
+    paintValue('weekUsd', fmtUsd(weekUsd), weekUsd);
+    paintValue('monthUsd', fmtUsd(monthUsd), monthUsd);
+    paintValue('allUsd', fmtUsd(allUsd), allUsd);
+  }
+
+  el('saveBtn').onclick = () => {
+    state.data[state.selectedDate] = readForm();
+    saveData();
+    renderCalendar();
+    renderStats();
+  };
+
+  el('clearBtn').onclick = () => {
+    delete state.data[state.selectedDate];
+    saveData();
+    fillForm();
+    renderCalendar();
+    renderStats();
+  };
+
+  el('prev').onclick = () => {
+    state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth()-1, 1);
+    renderCalendar();
+  };
+  el('next').onclick = () => {
+    state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth()+1, 1);
+    renderCalendar();
+  };
+
+  el('refreshPrice').onclick = fetchLivePrice;
+
+  function applyTheme(theme){
+    document.body.classList.toggle('light', theme==='light');
+    localStorage.setItem(THEME_KEY, theme);
+    el('themeToggle').textContent = theme === 'light' ? '☀️' : '🌙';
+  }
+
+  el('themeToggle').onclick = () => {
+    const next = document.body.classList.contains('light') ? 'dark' : 'light';
+    applyTheme(next);
+  };
+
+  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+  INPUTS.forEach(id => {
+    el(id).addEventListener('input', () => {
+      renderCalendar();
+      renderStats();
+    });
+  });
+
+  fillForm();
+  renderCalendar();
+  renderStats();
+  fetchLivePrice();
+  setInterval(fetchLivePrice, 60000);
+</script>
+</body>
+</html>

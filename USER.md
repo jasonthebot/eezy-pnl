@@ -3,7 +3,7 @@
 _Learn about the person you're helping. Update this as you go._
 
 - **Name:** mj
-- **What to call them:** mj
+- **What to call them:** Sir
 - **Pronouns:** _(optional)_
 - **Timezone:** UTC
 - **Notes:**
